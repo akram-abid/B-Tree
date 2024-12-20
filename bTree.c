@@ -47,6 +47,17 @@ void insertionSort(int *tab, int size)
     }
 }
 
+int indexFinder(int *tab, int size, int verify)
+{
+    for (int i = 0; i < size; i++)
+    {
+        if (verify > tab[i])
+        {
+            return i;
+        }
+    }
+}
+
 void printTable(int tab[], int size)
 {
     for (int i = 0; i < size; i++)
@@ -69,7 +80,6 @@ int *copyTable(int tab[], int size, int newVal)
 node *insertAfterDeviding(int *newTab, node *origin, int start, int end);
 void insertElement(node **tree, int val);
 
-
 int main()
 {
     node *BTree;
@@ -89,7 +99,7 @@ int main()
     {
         printf("true\n");
     }
-    
+
     return 0;
 }
 
@@ -116,39 +126,46 @@ void insertElement(node **tree, int val)
     }
     else
     {
-        if ((*tree)->counter < MAX_KEY)
+        if ((*tree)->pointer[0] == NULL)
         {
-            addToTable(&(*tree), (*tree)->counter, val);
-        }
-        else
-        {
-            int *new = copyTable((*tree)->keys, (*tree)->counter, val);
-            insertionSort(new, (*tree)->counter + 1);
-            printf("new table is   ");
-            printTable(new, 5);
-            int midVal = new[(MAX_KEY / 2)];
-            node *smaller = insertAfterDeviding(new,(*tree), 0, (MAX_KEY / 2)-1);
-            printf("the smaller are\t");
-            printTable(smaller->keys, 4);
-            node *bigger = insertAfterDeviding(new, (*tree), (MAX_KEY / 2) + 1, MAX_KEY);
-            printf("the bigger are\t");
-            printTable(bigger->keys, 4);
-            if ((*tree)->father == NULL)
+            if ((*tree)->counter < MAX_KEY)
             {
-                printf("the facther doesn't exist");
-                node *newfather;
-                insertElement(&newfather, midVal);
-                newfather->pointer[0] = smaller;
-                newfather->pointer[1] = bigger;
-                *tree = newfather;
-                smaller->father = newfather;
-                bigger->father = newfather;
+                addToTable(&(*tree), (*tree)->counter, val);
             }
             else
             {
-                insertElement(&(*tree)->father, midVal);
-                
+                int *new = copyTable((*tree)->keys, (*tree)->counter, val);
+                insertionSort(new, (*tree)->counter + 1);
+                printf("new table is   ");
+                printTable(new, 5);
+                int midVal = new[(MAX_KEY / 2)];
+                node *smaller = insertAfterDeviding(new, (*tree), 0, (MAX_KEY / 2) - 1);
+                printf("the smaller are\t");
+                printTable(smaller->keys, 4);
+                node *bigger = insertAfterDeviding(new, (*tree), (MAX_KEY / 2) + 1, MAX_KEY);
+                printf("the bigger are\t");
+                printTable(bigger->keys, 4);
+                if ((*tree)->father == NULL)
+                {
+                    printf("the facther doesn't exist");
+                    node *newfather;
+                    insertElement(&newfather, midVal);
+                    newfather->pointer[0] = smaller;
+                    newfather->pointer[1] = bigger;
+                    *tree = newfather;
+                    smaller->father = newfather;
+                    bigger->father = newfather;
+                }
+                else
+                {
+                    insertElement(&(*tree)->father, midVal);
+                }
             }
+        }
+        else
+        {
+            int index = indexFinder((*tree)->keys, MAX_KEY, val);
+            insertElement((*tree)->pointer[index], val);
         }
     }
 }
