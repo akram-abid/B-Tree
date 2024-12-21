@@ -1,21 +1,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define M 2
-#define MAX_KEY (2 * M)
-#define MAX_POINTER (2 * M + 1)
+// Remove the fixed M definition and make it a global variable
+int M;  // Order of the B-tree
+int MAX_KEY;      // Will be set to (2 * M)
+int MAX_POINTER;  // Will be set to (2 * M + 1)
 
 typedef struct node
 {
     int counter;
     struct node *father;
-    struct node *pointer[MAX_POINTER];
-    int keys[MAX_KEY];
+    struct node **pointer;  // Changed to dynamic allocation
+    int *keys;             // Changed to dynamic allocation
 } node;
+
+// Initialize the B-tree parameters based on order
+void initializeBTreeParams(int order) {
+    M = order;
+    MAX_KEY = 2 * M;
+    MAX_POINTER = 2 * M + 1;
+}
 
 node *createNode(int val)
 {
     node *new = (node *)malloc(sizeof(node));
+    if (!new)
+    {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Dynamically allocate arrays based on order
+    new->keys = (int *)malloc(MAX_KEY * sizeof(int));
+    new->pointer = (node **)malloc(MAX_POINTER * sizeof(node*));
+    
+    if (!new->keys || !new->pointer) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+
     new->keys[0] = val;
     for (int i = 1; i < MAX_KEY; i++)
     {
@@ -30,6 +53,14 @@ node *createNode(int val)
     return new;
 }
 
+// Free memory for a node
+void freeNode(node *n) {
+    if (n) {
+        free(n->keys);
+        free(n->pointer);
+        free(n);
+    }
+}
 void addToTable(node **element, int index, int val)
 {
     (*element)->keys[index] = val;
@@ -71,23 +102,30 @@ void printTable(int tab[], int size)
     }
     printf("\n");
 }
+// Rest of the functions remain largely the same, just use MAX_KEY and MAX_POINTER
+// instead of fixed values
 
-void *shiftTable(int *tab, int size, int index, int val){
-    for (int i = size - 1; i > index; i--)
-    {
-        tab[i] = tab[i - 1];
-    }
-    tab[index] = val;
+void addToTable(node **element, int index, int val)
+{
+    (*element)->keys[index] = val;
+    (*element)->counter++;
 }
 
-void *shiftPointers(node *tab, int size, int index){
-    for (int i = size - 1; i > index + 1; i--)
+// ... [Previous insertion sort, indexFinder, printTable functions remain the same]
+
+
+int findVal(int *tab, int count, int val)
+{
+    for (int i = 0; i < count; i++)
     {
-        tab[i] = tab[i - 1];
+        if (tab[i] == val)
+            return i;
     }
 }
 
-int *copyTable(int tab[], int size, int newVal){
+
+int *copyTable(int tab[], int size, int newVal)
+{
     int *newTab = malloc((size + 1) * sizeof(int));
     if (!newTab)
     {
@@ -101,17 +139,30 @@ int *copyTable(int tab[], int size, int newVal){
     newTab[size] = newVal;
     return newTab;
 }
-int getMidIndex(int size, int isRoot){
+
+int getMidIndex(int size, int isRoot)
+{
     return isRoot ? (size / 2) : M;
 }
 
-node *insertAfterDividing(int *newTab, node *origin, int start, int end){
+node *insertAfterDividing(int *newTab, node *origin, int start, int end)
+{
     node *newElement = (node *)malloc(sizeof(node));
     if (!newElement)
     {
         fprintf(stderr, "Memory allocation failed\n");
         exit(EXIT_FAILURE);
     }
+    
+    // Dynamically allocate arrays
+    newElement->keys = (int *)malloc(MAX_KEY * sizeof(int));
+    newElement->pointer = (node **)malloc(MAX_POINTER * sizeof(node*));
+    
+    if (!newElement->keys || !newElement->pointer) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+
     newElement->counter = 0;
     for (int i = 0; i < MAX_KEY; i++)
     {
@@ -129,15 +180,9 @@ node *insertAfterDividing(int *newTab, node *origin, int start, int end){
     return newElement;
 }
 
-int findVal(int *tab, int count, int val){
-    for (int i = 0; i < count; i++)
-    {
-        if (tab[i] == val)
-            return i;
-    }
-}
 
-void printBTree(node *root, int level){
+void printBTree(node *root, int level)
+{
     if (root != NULL)
     {
         printf("Level %d: ", level);
@@ -153,8 +198,9 @@ void printBTree(node *root, int level){
     }
 }
 
-void insertElement(node **tree, int val){
-    if (*tree == NULL)
+void insertElement(node **tree, int val)
+{
+        if (*tree == NULL)
     {
         *tree = createNode(val);
     }
@@ -166,7 +212,9 @@ void insertElement(node **tree, int val){
             {
                 addToTable(tree, (*tree)->counter, val);
                 insertionSort((*tree)->keys, (*tree)->counter);
-            }else{
+            }
+            else
+            {
                 int *new = copyTable((*tree)->keys, (*tree)->counter, val);
                 insertionSort(new, (*tree)->counter + 1);
                 int midIndex = getMidIndex(MAX_KEY + 1, (*tree)->father == NULL);
@@ -180,7 +228,9 @@ void insertElement(node **tree, int val){
                     *tree = newFather;
                     smaller->father = newFather;
                     bigger->father = newFather;
-                }else{
+                }
+                else
+                {
                     int index = indexFinder((*tree)->father->keys, (*tree)->father->counter, midVal);
                     if ((*tree)->father->counter < 4)
                     {
@@ -194,7 +244,9 @@ void insertElement(node **tree, int val){
                         (*tree)->father->pointer[index + 1] = bigger;
                         smaller->father = (*tree)->father;
                         bigger->father = (*tree)->father;
-                    }else{
+                    }
+                    else
+                    {
                         int *newfath = copyTable((*tree)->father->keys, (*tree)->father->counter, midVal);
                         insertionSort(newfath, (*tree)->counter + 1);
                         int fathIndex = findVal(newfath, 5, midVal);
@@ -228,7 +280,9 @@ void insertElement(node **tree, int val){
                                     bigfath->father = grandFather;
                                     *(*tree)->father = *(grandFather);
                                 }
-                            }else{
+                            }
+                            else
+                            {
                                 int newSIndex = findVal(smallfath->keys, 4, midVal);
                                 smallfath->pointer[newSIndex] = smaller;
                                 smallfath->pointer[newSIndex + 1] = bigger;
@@ -240,23 +294,55 @@ void insertElement(node **tree, int val){
                 }
                 free(new);
             }
-        }else{
+        }
+        else
+        {
             int index = indexFinder((*tree)->keys, (*tree)->counter, val);
             insertElement(&(*tree)->pointer[index], val);
         }
     }
 }
+
+// Add a cleanup function to free the entire tree
+void cleanupBTree(node *root) {
+    if (root != NULL) {
+        for (int i = 0; i <= root->counter; i++) {
+            if (root->pointer[i] != NULL) {
+                cleanupBTree(root->pointer[i]);
+            }
+        }
+        freeNode(root);
+    }
+}
+
 int main()
 {
+    int order;
+    printf("Enter the order of the B-tree: ");
+    scanf("%d", &order);
+    
+    if (order < 2) {
+        printf("Order must be at least 2\n");
+        return 1;
+    }
+    
+    initializeBTreeParams(order);
+    
     node *BTree = NULL;
-    int values[] = {33, 22, 11, 66, 12, 14, 13, 55, 44, 24, 52, 43, 21, 1, 2, 34, 4, 77, 35,39,7};
+    int values[] = {33, 22, 11, 66, 12, 14, 13, 55, 44, 24, 52, 43, 21, 1, 2, 34, 4, 77, 35, 39, 7};
     int numValues = sizeof(values) / sizeof(values[0]);
 
     for (int i = 0; i < numValues; i++)
     {
         insertElement(&BTree, values[i]);
     }
-    printf("Tree after insertion:\n");
+    
+    printf("Tree after insertion (Order %d):\n", order);
     printBTree(BTree, 0);
+    printf("\n");
+
+    // Clean up
+    cleanupBTree(BTree);
+    
     return 0;
 }
